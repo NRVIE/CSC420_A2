@@ -202,7 +202,7 @@ def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=
         model.epoch_end(epoch, result)
         history.append(result)
 
-    return model
+    return history
 
 @torch.no_grad()
 def evaluate(model, val_loader):
