@@ -131,7 +131,6 @@ def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
-
 def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, max_lr=0.01):
     """Part 2: Task 2
     :param
@@ -153,13 +152,12 @@ def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=
     test_dataset = CustomDataset(test_ds, test_trans)
 
     # Define DataLoader
-    train_dl = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+    train_dl = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                           pin_memory=True)
-    val_dl = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+    val_dl = DataLoader(val_dataset, batch_size=batch_size, shuffle=True,
                         pin_memory=True)
-    test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+    test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
                          pin_memory=True)
-
 
     # training model
     history = []
@@ -206,7 +204,6 @@ def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=
 
     return model
 
-
 @torch.no_grad()
 def evaluate(model, val_loader):
     model.eval()
@@ -216,7 +213,7 @@ def evaluate(model, val_loader):
 
 def main():
     model = DBI_CNN()
-    model = train_dbi_model(10, dataset['dbi'], model=model, max_lr=0.001)
+    history = train_dbi_model(10, dataset['dbi'], model, max_lr=0.001)
 
 if __name__ == "__main__":
     main()
