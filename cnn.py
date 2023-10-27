@@ -78,6 +78,19 @@ class DBI_CNN(nn.Module):
         result = self.net(x)
         return result
 
+    # validation step
+    def validation_step(self, batch):
+        img, targets = batch
+        out = self(img)
+        loss = ce_loss(out, targets)
+        acc = accuracy(out, targets)
+        return {'val_acc': acc.detach(), 'val_loss': loss.detach()}
+
+
+def accuracy(outputs, labels):
+    _, preds = torch.max(outputs, dim=1)
+    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+
 # Custom class Dataset
 class CustomDataset(Dataset):
     def __init__(self, ds, transform=None):
