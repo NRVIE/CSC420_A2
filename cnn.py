@@ -34,17 +34,17 @@ train_trans = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.ColorJitter(brightness=0.5),
     transforms.RandomRotation(degrees=15),
-    transforms.Resize(size=256),  # Image net standards
+    transforms.Resize((256, 256)),  # Image net standards
     transforms.ToTensor(),
 ])
 
 val_trans = transforms.Compose([
-    transforms.Resize(256),
+    transforms.Resize((256, 256)),
     transforms.ToTensor(),
 ])
 
 test_trans = transforms.Compose([
-    transforms.Resize(256),
+    transforms.Resize((256, 256)),
     transforms.ToTensor(),
 ])
 
@@ -68,13 +68,15 @@ class DBI_CNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=1, padding=0, dilation=1, ceil_mode=False),
             nn.Dropout(p=0.5, inplace=False),
+            nn.Flatten(),
             nn.Linear(254 * 254 * 8, 32),
             nn.Dropout(p=0.5, inplace=False),
             nn.Softmax(1)
         )
 
     def forward(self, x):
-        return self.net(x)
+        result = self.net(x)
+        return result
 
 # Custom class Dataset
 class CustomDataset(Dataset):
@@ -95,10 +97,6 @@ class CustomDataset(Dataset):
 # def accuracy(outputs, labels):
 #     _, preds = torch.max(outputs, dim=1)
 #     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
-
-def accuracy(outputs, labels):
-    _, preds = torch.max(outputs, dim=1)
-    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
 def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, learning_rate=0.01):
     """Part 2: Task 2
@@ -122,8 +120,8 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
 
     # Define DataLoader
     train_dl = DataLoader(train_dataset, batch_size=batch_size)
-    val_dl = DataLoader(val_dataset, batch_size=batch_size*2)
-    test_dl = DataLoader(test_dataset, batch_size=batch_size*2)
+    val_dl = DataLoader(val_dataset, batch_size=batch_size)
+    test_dl = DataLoader(test_dataset, batch_size=batch_size)
 
 
     # training model
@@ -148,7 +146,7 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
                 imgs, labels = imgs.cuda(), labels.cuda()
 
             # Forward
-            output = model(imgs)
+            output = model.forward(imgs)
             loss = loss_func(output, labels)
             train_loss += loss.item()
             train_total_num += 1
@@ -161,14 +159,23 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
             optimizer.step()
 
         # Validate
-        for imgs, labels in val_dl:
-            output = model(imgs)
-            loss = loss_func(output, labels)
-            valid_loss += loss.item()
-            valid_total_num += 1
+        # for imgs, labels in val_dl:
+        #     if train_on_gpu:
+        #         imgs, labels = imgs.cuda(), labels.cuda()
+        #     output = model(imgs)
+        #     loss = loss_func(output, labels)
+        #     valid_loss += loss.item()
+        #     valid_total_num += 1
             # acc = accuracy(output, labels)
             # return {'val_acc': acc.detach(), 'val_loss': loss.detach()}
         print("Epoch {} has train loss: {}.\n".format(i, train_loss/train_total_num))
-        print("Epoch {} has valid loss: {}.\n".format(i, valid_loss / valid_total_num))
+        # print("Epoch {} has valid loss: {}.\n".format(i, valid_loss / valid_total_num))
 
     return model
+
+
+def main():
+    model = train_dbi_model(10, dataset['dbi'])
+
+if __name__ == "__main__":
+    main()
