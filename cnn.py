@@ -139,7 +139,9 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
         valid_total_num = 0
         # train_acc = 0
         # valid_acc = 0
-
+        history = []
+        train_losses = []
+        lrs = []
         # Training
         for imgs, labels in train_dl:
             if train_on_gpu:
@@ -158,6 +160,13 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
             # Gradient descent
             optimizer.step()
 
+        # Validation phase
+        result = evaluate(model, val_dl)
+        result['train_loss'] = torch.stack(train_losses).mean().item()
+        result['lrs'] = lrs
+        model.epoch_end(epoch, result)
+        history.append(result)
+
         # Validate
         # for imgs, labels in val_dl:
         #     if train_on_gpu:
@@ -172,6 +181,13 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
         # print("Epoch {} has valid loss: {}.\n".format(i, valid_loss / valid_total_num))
 
     return model
+
+
+@torch.no_grad()
+def evaluate(model, val_loader):
+    model.eval()
+    outputs = [model.validation_step(batch) for batch in val_loader]
+    return model.validation_epoch_end(outputs)
 
 
 def main():
