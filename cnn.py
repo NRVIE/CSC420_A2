@@ -60,16 +60,16 @@ class DBI_CNN(nn.Module):
             nn.BatchNorm2d(16),
             nn.Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=1, padding=0, dilation=1, ceil_mode=False),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
             nn.Conv2d(16, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(8),
             nn.Conv2d(8, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=1, padding=0, dilation=1, ceil_mode=False),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
             nn.Dropout(p=0.5, inplace=False),
             nn.Flatten(),
-            nn.Linear(254 * 254 * 8, 32),
+            nn.Linear(64 * 64 * 8, 32),
             nn.Dropout(p=0.5, inplace=False),
             nn.Softmax(1)
         )
@@ -158,7 +158,7 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
     model = DBI_CNN()
 
     # Define Optimizer
-    optimizer = torch.optim.SGD(
+    optimizer = torch.optim.Adam(
         model.parameters(),
         lr=learning_rate,
     )
@@ -181,6 +181,7 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
             output = model.forward(imgs)
             loss = loss_func(output, labels)
             train_loss += loss.item()
+            train_losses.append(loss)
             train_total_num += 1
 
             # Backward
@@ -221,7 +222,7 @@ def evaluate(model, val_loader):
 
 
 def main():
-    model = train_dbi_model(10, dataset['dbi'])
+    model = train_dbi_model(3, dataset['dbi'])
 
 if __name__ == "__main__":
     main()
