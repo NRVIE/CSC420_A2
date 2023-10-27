@@ -1,5 +1,6 @@
 from abc import ABC
 
+from matplotlib import pyplot as plt
 from torchvision import transforms, datasets, models
 import torch
 from torch import optim, cuda
@@ -57,33 +58,14 @@ def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
-# Training model
-class DBI_CNN(nn.Module):
-    def __init__(self):
-        super(DBI_CNN, self).__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm2d(16),
-            nn.Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
-            nn.Conv2d(16, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm2d(8),
-            nn.Conv2d(8, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Flatten(),
-            nn.Linear(64 * 64 * 8, 32),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Softmax(1)
-        )
 
-    def forward(self, x):
-        result = self.net(x)
-        return result
+class ImageClassificationBase(nn.Module):
+    # training step
+    def training_step(self, batch):
+        img, targets = batch
+        out = self(img)
+        loss = ce_loss(out, targets)
+        return loss
 
     # validation step
     def validation_step(self, batch):
@@ -111,6 +93,34 @@ class DBI_CNN(nn.Module):
                                                                                           result[
                                                                                               "val_acc"]))
 
+
+# Training model
+class DBI_CNN(ImageClassificationBase):
+    def __init__(self):
+        super(DBI_CNN, self).__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(16),
+            nn.Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
+            nn.Conv2d(16, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(8),
+            nn.Conv2d(8, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
+            nn.Dropout(p=0.5, inplace=False),
+            nn.Flatten(),
+            nn.Linear(64 * 64 * 8, 32),
+            nn.Dropout(p=0.5, inplace=False),
+            nn.Softmax(1)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
 # Custom class Dataset
 class CustomDataset(Dataset):
     def __init__(self, ds, transform=None):
@@ -130,6 +140,7 @@ class CustomDataset(Dataset):
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
+
 
 def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, max_lr=0.01):
     """Part 2: Task 2
@@ -204,6 +215,7 @@ def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=
 
     return history
 
+
 @torch.no_grad()
 def evaluate(model, val_loader):
     model.eval()
@@ -214,6 +226,22 @@ def evaluate(model, val_loader):
 def main():
     model = DBI_CNN()
     history = train_dbi_model(10, dataset['dbi'], model, max_lr=0.001)
+
+    # Plot preparation
+    val_loss = []
+    train_loss = []
+    val_acc = []
+    time = list(range(len(history)))
+    for h in history:
+        val_loss.append(h['val_loss'])
+        train_loss.append(h['train_loss'])
+        val_acc.append(h['val_acc'])
+    # Plotting Accuracy graph
+    plt.plot(time, val_acc, c='red', label='validate accuracy', marker='x')
+    plt.xlabel('epochs')
+    plt.ylabel('accuracy')
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
