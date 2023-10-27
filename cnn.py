@@ -158,7 +158,7 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
     model = DBI_CNN()
 
     # Define Optimizer
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.SGD(
         model.parameters(),
         lr=learning_rate,
     )
@@ -198,19 +198,6 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
         model.epoch_end(epoch, result)
         history.append(result)
 
-        # Validate
-        # for imgs, labels in val_dl:
-        #     if train_on_gpu:
-        #         imgs, labels = imgs.cuda(), labels.cuda()
-        #     output = model(imgs)
-        #     loss = loss_func(output, labels)
-        #     valid_loss += loss.item()
-        #     valid_total_num += 1
-            # acc = accuracy(output, labels)
-            # return {'val_acc': acc.detach(), 'val_loss': loss.detach()}
-        print("Epoch {} has train loss: {}.\n".format(i, train_loss/train_total_num))
-        # print("Epoch {} has valid loss: {}.\n".format(i, valid_loss / valid_total_num))
-
     return model
 
 
@@ -222,7 +209,7 @@ def evaluate(model, val_loader):
 
 
 def main():
-    model = train_dbi_model(3, dataset['dbi'])
+    model = train_dbi_model(10, dataset['dbi'], learning_rate=0.001)
 
 if __name__ == "__main__":
     main()
