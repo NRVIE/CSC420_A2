@@ -15,7 +15,20 @@ dataset = {
 # Define classes
 targets = [n for n in dataset['dbi'].classes]
 
-# Image augment
+# Whether to train on a gpu
+train_on_gpu = cuda.is_available()
+print(f'Train on gpu: {train_on_gpu}')
+
+# Number of gpus
+if train_on_gpu:
+    gpu_count = cuda.device_count()
+    print(f'{gpu_count} gpus detected.')
+    if gpu_count > 1:
+        multi_gpu = True
+    else:
+        multi_gpu = False
+
+# Image augmentation
 train_trans = transforms.Compose([
     transforms.RandomResizedCrop(size=300, scale=(0.8, 1.0)),
     transforms.RandomHorizontalFlip(),
@@ -79,23 +92,27 @@ class CustomDataset(Dataset):
         return img, label
 
 
+# def accuracy(outputs, labels):
+#     _, preds = torch.max(outputs, dim=1)
+#     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
-
-def train_dbi_model(ds, batch_size=64, train_p=0.6, val_p=0.1, learning_rate=0.01):
+def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, learning_rate=0.01):
     """Part 2: Task 2
     :param
     train_p: the portion of dataset been training set
     val_p: the portion of dataset been valid set
     learning_rate: learning rate for gradient decent
     """
+
     # Getting train set and validation set and test set
-    train_size = int(len(dataset) * train_p)
-    val_size = int(len(dataset) * val_p)
-    test_size = len(dataset) - train_size - val_size
-    train_ds, val_ds, test_ds = random_split(dataset, [train_size, val_size, test_size])
+    train_size = int(len(ds) * train_p)
+    val_size = int(len(ds) * val_p)
+    test_size = len(ds) - train_size - val_size
+    train_ds, val_ds, test_ds = random_split(ds, [train_size, val_size, test_size])
 
     # Assume we take 256*256 picture
     # Image augmentaion
@@ -111,9 +128,47 @@ def train_dbi_model(ds, batch_size=64, train_p=0.6, val_p=0.1, learning_rate=0.0
 
     # training model
     model = DBI_CNN()
-    # Classifier
-    # TODO: implement classifier
+
+    # Define Optimizer
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=learning_rate,
     )
+    for i in range(epoch):
+        train_loss = 0.0
+        train_total_num = 0
+        valid_loss = 0.0
+        valid_total_num = 0
+        # train_acc = 0
+        # valid_acc = 0
+
+        # Training
+        for imgs, labels in train_dl:
+            if train_on_gpu:
+                imgs, labels = imgs.cuda(), labels.cuda()
+
+            # Forward
+            output = model(imgs)
+            loss = loss_func(output, labels)
+            train_loss += loss.item()
+            train_total_num += 1
+
+            # Backward
+            optimizer.zero_grad()
+            loss.backward()
+
+            # Gradient descent
+            optimizer.step()
+
+        # Validate
+        for imgs, labels in val_dl:
+            output = model(imgs)
+            loss = loss_func(output, labels)
+            valid_loss += loss.item()
+            valid_total_num += 1
+            # acc = accuracy(output, labels)
+            # return {'val_acc': acc.detach(), 'val_loss': loss.detach()}
+        print("Epoch {} has train loss: {}.\n".format(i, train_loss/train_total_num))
+        print("Epoch {} has valid loss: {}.\n".format(i, valid_loss / valid_total_num))
+
+    return model

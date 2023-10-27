@@ -78,6 +78,13 @@ train_dataset = DogBreedDataset(train_ds, train_transform)
 val_dataset = DogBreedDataset(val_ds, val_transform)
 test_dataset = DogBreedDataset(test_ds, test_transform)
 
+batch_size = 64
+
+# Create DataLoaders
+train_dl = DataLoader(train_dataset, batch_size, shuffle=True, num_workers=2, pin_memory=True)
+val_dl = DataLoader(val_dataset, batch_size * 2, num_workers=2, pin_memory=True)
+test_dl = DataLoader(test_dataset, batch_size * 2, num_workers=2, pin_memory=True)
+
 def main():
     img, label = train_ds[6]
     print(dataset.classes[label])
