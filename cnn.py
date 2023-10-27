@@ -6,6 +6,8 @@ from torch import optim, cuda
 from torch.utils.data import DataLoader, Dataset, random_split
 import torch.nn as nn
 
+random_seed = 45
+torch.manual_seed(random_seed);
 # Load dataset
 dataset = {
     "dbi": datasets.ImageFolder('./DBI'),
@@ -49,6 +51,11 @@ test_trans = transforms.Compose([
 ])
 
 ce_loss = nn.CrossEntropyLoss()
+
+
+def accuracy(outputs, labels):
+    _, preds = torch.max(outputs, dim=1)
+    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
 # Training model
 class DBI_CNN(nn.Module):
@@ -104,10 +111,6 @@ class DBI_CNN(nn.Module):
                                                                                           result[
                                                                                               "val_acc"]))
 
-def accuracy(outputs, labels):
-    _, preds = torch.max(outputs, dim=1)
-    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
-
 # Custom class Dataset
 class CustomDataset(Dataset):
     def __init__(self, ds, transform=None):
@@ -124,11 +127,12 @@ class CustomDataset(Dataset):
         return img, label
 
 
-# def accuracy(outputs, labels):
-#     _, preds = torch.max(outputs, dim=1)
-#     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']
 
-def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, learning_rate=0.01):
+
+def train_dbi_model(epoch, ds, model, loss_func=ce_loss, batch_size=64, train_p=0.6, val_p=0.1, max_lr=0.01):
     """Part 2: Task 2
     :param
     train_p: the portion of dataset been training set
@@ -149,27 +153,25 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
     test_dataset = CustomDataset(test_ds, test_trans)
 
     # Define DataLoader
-    train_dl = DataLoader(train_dataset, batch_size=batch_size)
-    val_dl = DataLoader(val_dataset, batch_size=batch_size)
-    test_dl = DataLoader(test_dataset, batch_size=batch_size)
+    train_dl = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+                          pin_memory=True)
+    val_dl = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+                        pin_memory=True)
+    test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=2,
+                         pin_memory=True)
 
 
     # training model
-    model = DBI_CNN()
-
+    history = []
     # Define Optimizer
     optimizer = torch.optim.SGD(
         model.parameters(),
-        lr=learning_rate,
+        lr=max_lr,
     )
+    # set up one cycle lr scheduler
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=epoch,
+                                                steps_per_epoch=len(train_dl))
     for i in range(epoch):
-        train_loss = 0.0
-        train_total_num = 0
-        valid_loss = 0.0
-        valid_total_num = 0
-        # train_acc = 0
-        # valid_acc = 0
-        history = []
         train_losses = []
         lrs = []
         # Training
@@ -180,9 +182,7 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
             # Forward
             output = model.forward(imgs)
             loss = loss_func(output, labels)
-            train_loss += loss.item()
             train_losses.append(loss)
-            train_total_num += 1
 
             # Backward
             optimizer.zero_grad()
@@ -190,6 +190,12 @@ def train_dbi_model(epoch, ds, loss_func=ce_loss, batch_size=64, train_p=0.6, va
 
             # Gradient descent
             optimizer.step()
+
+            # record and update lr
+            lrs.append(get_lr(optimizer))
+
+            # modifies the lr value
+            sched.step()
 
         # Validation phase
         result = evaluate(model, val_dl)
@@ -209,7 +215,8 @@ def evaluate(model, val_loader):
 
 
 def main():
-    model = train_dbi_model(10, dataset['dbi'], learning_rate=0.001)
+    model = DBI_CNN()
+    model = train_dbi_model(10, dataset['dbi'], model=model, max_lr=0.001)
 
 if __name__ == "__main__":
     main()
