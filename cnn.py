@@ -94,6 +94,15 @@ class DBI_CNN(nn.Module):
         epoch_acc = torch.stack(batch_accs).mean()
         return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
 
+    # print result end epoch
+    def epoch_end(self, epoch, result):
+        print("Epoch [{}] : train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(epoch,
+                                                                                          result[
+                                                                                              "train_loss"],
+                                                                                          result[
+                                                                                              "val_loss"],
+                                                                                          result[
+                                                                                              "val_acc"]))
 
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
