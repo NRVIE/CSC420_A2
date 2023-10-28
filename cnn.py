@@ -286,7 +286,7 @@ def evaluate(model, val_loader):
 
 
 def main():
-    model = DBI_Resnet18()
+    model = DBI_PretrainedResnet18()
     device = get_default_device()
     to_device(model, device);
     history, test_dl = train_dbi_model(10, dataset['dbi'], model, device, max_lr=0.001)
